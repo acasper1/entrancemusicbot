@@ -8,6 +8,7 @@ object Bot extends App {
   val LOGGER: Logger = LoggerFactory.getLogger(this.getClass)
 
   // TODO: use a more robust method to handle bot configuration
+  LOGGER.info("Initializing bot...")
   val discordToken = args(0)
   val discordClient: DiscordClient = DiscordClientBuilder.create(discordToken).build()
   discordClient.login().block()
