@@ -5,10 +5,10 @@ import org.slf4j.{Logger, LoggerFactory}
 
 object Bot extends App {
 
-  val LOGGER: Logger = LoggerFactory.getLogger(this.getClass.getName)
+  val logger: Logger = LoggerFactory.getLogger(this.getClass.getName)
 
   // TODO: use a more robust method to handle bot configuration
-  LOGGER.info("Initializing bot...")
+  logger.info("Initializing bot...")
   val discordToken = args(0)
   val discordClient: DiscordClient = DiscordClientBuilder.create(discordToken).build()
 //  discordClient.login().block()
