@@ -11,5 +11,5 @@ object Bot extends App {
   LOGGER.info("Initializing bot...")
   val discordToken = args(0)
   val discordClient: DiscordClient = DiscordClientBuilder.create(discordToken).build()
-  discordClient.login().block()
+//  discordClient.login().block()
 }
