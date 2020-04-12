@@ -5,7 +5,7 @@ import org.slf4j.{Logger, LoggerFactory}
 
 object Bot extends App {
 
-  val LOGGER: Logger = LoggerFactory.getLogger(this.getClass)
+  val LOGGER: Logger = LoggerFactory.getLogger(this.getClass.getName)
 
   // TODO: use a more robust method to handle bot configuration
   LOGGER.info("Initializing bot...")
