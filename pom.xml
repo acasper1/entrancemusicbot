@@ -20,15 +20,16 @@
       <version>3.0.14</version>
     </dependency>
     <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <version>1.7.30</version>
+      <groupId>com.typesafe.scala-logging</groupId>
+      <artifactId>scala-logging_2.13</artifactId>
+      <version>3.9.2</version>
     </dependency>
     <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-simple</artifactId>
-      <version>1.7.30</version>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <version>1.2.3</version>
     </dependency>
+
 
     <!--  Test Dependencies  -->
 
