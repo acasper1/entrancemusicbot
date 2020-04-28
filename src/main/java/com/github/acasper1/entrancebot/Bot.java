@@ -1,0 +1,61 @@
+package com.github.acasper1.entrancebot;
+
+import com.github.acasper1.entrancebot.audio.TrackScheduler;
+import com.github.acasper1.entrancebot.command.Command;
+import com.github.acasper1.entrancebot.audio.LavaPlayerAudioProvider;
+import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
+import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
+import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
+import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
+import com.sedmelluq.discord.lavaplayer.track.playback.NonAllocatingAudioFrameBuffer;
+import discord4j.core.DiscordClient;
+import discord4j.core.DiscordClientBuilder;
+import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.VoiceState;
+import discord4j.core.object.entity.Member;
+import discord4j.voice.AudioProvider;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+
+public class Bot {
+    private static final Map<String, Command> commands = new HashMap<>();
+    private static AudioProvider provider;
+
+    public static void main(String[] args) {
+        final AudioPlayerManager playerManager = new DefaultAudioPlayerManager();
+        playerManager.getConfiguration().setFrameBufferFactory(NonAllocatingAudioFrameBuffer::new);
+        AudioSourceManagers.registerRemoteSources(playerManager);
+        final AudioPlayer player = playerManager.createPlayer();
+        provider = new LavaPlayerAudioProvider(player);
+        commands.put("ping", event -> event.getMessage().getChannel()
+                .flatMap(channel -> channel.createMessage("Pong!"))
+                .then());
+
+        commands.put("join", event -> Mono.justOrEmpty(event.getMember())
+                .flatMap(Member::getVoiceState)
+                .flatMap(VoiceState::getChannel)
+                .flatMap(channel -> channel.join(spec -> spec.setProvider(provider)))
+                .then());
+
+        final TrackScheduler scheduler = new TrackScheduler(player);
+        commands.put("play", event -> Mono.justOrEmpty(event.getMessage().getContent())
+            .map(content -> Arrays.asList(content.split(" ")))
+            .doOnNext(command -> playerManager.loadItem(command.get(1), scheduler))
+            .then());
+
+        final DiscordClient client = new DiscordClientBuilder(args[0]).build();
+        client.login().block();
+
+        client.getEventDispatcher().on(MessageCreateEvent.class)
+            .flatMap(event -> Mono.justOrEmpty(event.getMessage().getContent())
+                .flatMap(content -> Flux.fromIterable(commands.entrySet())
+                    .filter(entry -> content.contains("#!" + entry.getKey()))
+                    .flatMap(entry -> entry.getValue().execute(event))
+                    .next()))
+            .subscribe();
+    }
+}
