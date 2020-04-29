@@ -9,7 +9,6 @@ import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
 import com.sedmelluq.discord.lavaplayer.track.playback.NonAllocatingAudioFrameBuffer;
 import discord4j.core.DiscordClient;
-import discord4j.core.DiscordClientBuilder;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.VoiceState;
 import discord4j.core.object.entity.Member;
@@ -47,7 +46,7 @@ public class Bot {
             .doOnNext(command -> playerManager.loadItem(command.get(1), scheduler))
             .then());
 
-        final DiscordClient client = new DiscordClientBuilder(args[0]).build();
+        final DiscordClient client = DiscordClient.create(args[0]);
         client.login().block();
 
         client.getEventDispatcher().on(MessageCreateEvent.class)
