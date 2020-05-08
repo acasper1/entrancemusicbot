@@ -1,18 +1,13 @@
 package com.github.acasper1.entrancebot;
 
+import com.github.acasper1.entrancebot.audio.LavaPlayerAudioProvider;
 import com.github.acasper1.entrancebot.audio.TrackScheduler;
 import com.github.acasper1.entrancebot.command.Command;
-import com.github.acasper1.entrancebot.audio.LavaPlayerAudioProvider;
-import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
-import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
-import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
-import com.sedmelluq.discord.lavaplayer.track.playback.NonAllocatingAudioFrameBuffer;
 import discord4j.core.DiscordClient;
 import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.VoiceState;
-import discord4j.core.object.entity.Member;
-import discord4j.voice.AudioProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -21,40 +16,75 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Bot {
-    private static final Map<String, Command> commands = new HashMap<>();
-    private static AudioProvider provider;
+    private final DiscordClient client;
+    private final AudioPlayerManager playerManager;
+    private final LavaPlayerAudioProvider player;
+    private final TrackScheduler scheduler;
+    private final Map<String, Command> commands;
+    private final Map<String, String> userMapping;
+    private final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
 
-    public static void main(String[] args) {
-        final AudioPlayerManager playerManager = new DefaultAudioPlayerManager();
-        playerManager.getConfiguration().setFrameBufferFactory(NonAllocatingAudioFrameBuffer::new);
-        AudioSourceManagers.registerRemoteSources(playerManager);
-        final AudioPlayer player = playerManager.createPlayer();
-        provider = new LavaPlayerAudioProvider(player);
-        commands.put("ping", event -> event.getMessage().getChannel()
-                .flatMap(channel -> channel.createMessage("Pong!"))
-                .then());
+    public Bot(DiscordClient client, AudioPlayerManager playerManager,
+               LavaPlayerAudioProvider player, TrackScheduler scheduler) {
 
-        commands.put("join", event -> Mono.justOrEmpty(event.getMember())
-                .flatMap(Member::getVoiceState)
-                .flatMap(VoiceState::getChannel)
-                .flatMap(channel -> channel.join(spec -> spec.setProvider(provider)))
-                .then());
-
-        final TrackScheduler scheduler = new TrackScheduler(player);
-        commands.put("play", event -> Mono.justOrEmpty(event.getMessage().getContent())
-            .map(content -> Arrays.asList(content.split(" ")))
-            .doOnNext(command -> playerManager.loadItem(command.get(1), scheduler))
-            .then());
-
-        final DiscordClient client = DiscordClient.create(args[0]);
-        client.login().block();
-
-        client.getEventDispatcher().on(MessageCreateEvent.class)
-            .flatMap(event -> Mono.justOrEmpty(event.getMessage().getContent())
-                .flatMap(content -> Flux.fromIterable(commands.entrySet())
-                    .filter(entry -> content.contains("#!" + entry.getKey()))
-                    .flatMap(entry -> entry.getValue().execute(event))
-                    .next()))
-            .subscribe();
+        LOGGER.info("Initializing Bot...");
+        this.client = client;
+        this.playerManager = playerManager;
+        this.player = player;
+        this.scheduler = scheduler;
+        this.commands = new HashMap<>();
+        this.userMapping = new HashMap<>();
+        this.addDefaultCommands();
+        LOGGER.info("Bot initialization complete!");
     }
+
+    public void run() {
+        // TODO: Add voice channel join events to event dispatcher
+        this.client.getEventDispatcher().on(MessageCreateEvent.class)
+                .flatMap(event -> Mono.justOrEmpty(event.getMessage().getContent())
+                        .flatMap(content -> Flux.fromIterable(this.commands.entrySet())
+                                .filter(entry -> content.contains("#!" + entry.getKey()))
+                                .flatMap(entry -> entry.getValue().execute(event))
+                                .next()))
+                .subscribe();
+        LOGGER.info("Bot is listening for events!");
+    }
+
+    private void addDefaultCommands() {
+        LOGGER.info("Adding default commands...");
+        LOGGER.debug("Adding #!ping command...");
+        // #!ping command - Checks whether the bot is listening
+        commands.put(
+                "ping",
+                event -> event.getMessage().getChannel()
+                        .flatMap(channel -> channel.createMessage("Pong!"))
+                        .then()
+        );
+
+        LOGGER.debug("Adding #!useradd command...");
+        // #!useradd command - Allows adding of a user:song-url mapping
+        commands.put(
+                "useradd",
+                event -> Mono.justOrEmpty(event.getMessage().getContent())
+                        // FIXME: this will pass the removed value to the next map function
+                        .map(content -> Arrays.asList(content.split(" ")).remove(0))
+                        .map(content -> Arrays.asList(content.split(":")))
+                        .doOnNext(command -> this.userMapping.put(command.get(0).trim(), command.get(1).trim()))
+                        .then()
+        );
+
+        LOGGER.debug("Adding #!userdel command...");
+        // #!userdel command - Allows removing of a user:song-url mapping
+        commands.put(
+                "userdel",
+                event -> Mono.justOrEmpty(event.getMessage().getContent())
+                        // FIXME: this will pass the removed value to the next map function
+                        .map(content -> Arrays.asList(content.split(" ")).remove(0))
+                        .doOnNext(user -> this.userMapping.remove(user.trim()))
+                        .then()
+        );
+        LOGGER.info("Adding default commands complete!");
+    }
+
+
 }
