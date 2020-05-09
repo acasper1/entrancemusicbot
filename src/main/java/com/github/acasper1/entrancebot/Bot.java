@@ -66,8 +66,7 @@ public class Bot {
         commands.put(
                 "useradd",
                 event -> Mono.justOrEmpty(event.getMessage().getContent())
-                        // FIXME: this will pass the removed value to the next method in the chain
-                        .map(content -> Arrays.asList(content.split(" ")).remove(0))
+                        .map(content -> Arrays.asList(content.split(" ")).get(1))
                         .map(content -> Arrays.asList(content.split(":")))
                         .doOnNext(command -> this.userMapping.put(command.get(0).trim(), command.get(1).trim()))
                         .then()
@@ -78,8 +77,7 @@ public class Bot {
         commands.put(
                 "userdel",
                 event -> Mono.justOrEmpty(event.getMessage().getContent())
-                        // FIXME: this will pass the removed value to the next method in the chain
-                        .map(content -> Arrays.asList(content.split(" ")).remove(0))
+                        .map(content -> Arrays.asList(content.split(" ")).get(1))
                         .doOnNext(user -> this.userMapping.remove(user.trim()))
                         .then()
         );
